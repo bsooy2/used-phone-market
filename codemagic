@@ -1,0 +1,36 @@
+workflows:
+  syki-android-from-zip:
+    name: SYKI PHONE Android APK from ZIP
+    max_build_duration: 120
+    environment:
+      node: 22
+      java: 17
+      vars:
+        ANDROID_VERSION_CODE: 22
+    scripts:
+      - name: Unpack SYKI PHONE source
+        script: |
+          PROJECT_DIR="$CM_BUILD_DIR/syki-phone"
+          rm -rf "$PROJECT_DIR"
+          mkdir -p "$PROJECT_DIR"
+          unzip -q "$CM_BUILD_DIR/SYKI-PHONE-source.zip" -d "$PROJECT_DIR"
+          test -f "$PROJECT_DIR/package.json"
+      - name: Install dependencies and run checks
+        script: |
+          cd "$CM_BUILD_DIR/syki-phone"
+          corepack enable
+          pnpm install --frozen-lockfile
+          pnpm vitest run
+          pnpm check
+      - name: Generate native Android project
+        script: |
+          cd "$CM_BUILD_DIR/syki-phone"
+          npx expo prebuild --platform android --non-interactive --clean
+      - name: Build APK and AAB
+        script: |
+          cd "$CM_BUILD_DIR/syki-phone/android"
+          ./gradlew app:assembleRelease app:bundleRelease
+    artifacts:
+      - syki-phone/android/app/build/outputs/**/*.apk
+      - syki-phone/android/app/build/outputs/**/*.aab
+      - syki-phone/android/app/build/outputs/mapping/**/*.txt
